@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Rastreamento</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h1>Dashboard de Rastreamento</h1>
+
+  <div class="upload-container">
+    <label class="custom-file-upload">
+      <input type="file" id="fileInput" accept=".csv">
+      Escolher Planilha CSV
+    </label>
+  </div>
+
+  <div class="cards">
+    <!-- NOVO CARD: Comunicações hoje -->
+    <div class="card" id="cardComunicouHoje">
+      <h2>✅ Comunicações hoje</h2>
+      <p id="countComunicouHoje">0</p>
+    </div>
+
+    <!-- CARD: Sem comunicação hoje -->
+    <div class="card" id="cardSemComunicacaoHoje">
+      <h2>📅 Sem comunicação hoje</h2>
+      <p id="countSemComunicacaoHoje">0</p>
+    </div>
+
+    <div class="card" id="card7">
+      <h2>⚠️ > 7 dias</h2>
+      <p id="count7">0</p>
+    </div>
+
+    <div class="card" id="card15">
+      <h2>🔴 > 15 dias</h2>
+      <p id="count15">0</p>
+    </div>
+
+    <div class="card" id="card30">
+      <h2>⛔ > 30 dias</h2>
+      <p id="count30">0</p>
+    </div>
+  </div>
+
+  <!-- SEÇÃO DE PESQUISA E TABELA -->
+  <div class="search-section">
+    <h2>Pesquisar IMEI</h2>
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Digite o IMEI para pesquisar...">
+      <button id="searchBtn">Pesquisar</button>
+      <button id="clearSearchBtn">Limpar</button>
+    </div>
+    
+    <div class="table-container">
+      <table id="imeiTable">
+        <thead>
+          <tr>
+            <th>IMEI</th>
+            <th>Contrato</th>
+            <th>Dias sem Localização</th>
+            <th>Última Localização</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- Dados serão inseridos aqui via JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="modalTitle"></h2>
+
+      <div id="modalList"></div>
+
+      <div class="pagination">
+        <button id="prevBtn">Anterior</button>
+        <span id="pageInfo"></span>
+        <button id="nextBtn">Próximo</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

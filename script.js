@@ -4,7 +4,7 @@ let dadosPesquisa = [];
 let paginaAtual = 1;
 const porPagina = 50;
 
-let tipoModalAtual = ''; // Para saber qual tipo de dados está sendo mostrado
+let tipoModalAtual = '';
 
 const fileInput = document.getElementById("fileInput");
 const modal = document.getElementById("modal");
@@ -29,9 +29,17 @@ saveBtn.className = "save-btn";
 saveBtn.onclick = salvarDados;
 document.querySelector(".upload-container").appendChild(saveBtn);
 
+// Função para verificar se é "Sem dados na API"
+function isSemDadosAPI(ultimaLocalizacao) {
+  if (!ultimaLocalizacao) return false;
+  const texto = ultimaLocalizacao.toLowerCase().trim();
+  return texto.includes('sem dados') || texto.includes('sem dados na api');
+}
+
 // Função para calcular dias desde a última localização
 function calcularDias(ultimaLocalizacao) {
   if (!ultimaLocalizacao || ultimaLocalizacao === '') return 999;
+  if (isSemDadosAPI(ultimaLocalizacao)) return -1; // -1 para indicar "Sem dados na API"
   
   try {
     const dataLimpa = ultimaLocalizacao.trim();
@@ -64,6 +72,7 @@ function calcularDias(ultimaLocalizacao) {
 // Função para verificar se comunicou hoje
 function comunicouHoje(ultimaLocalizacao) {
   if (!ultimaLocalizacao) return false;
+  if (isSemDadosAPI(ultimaLocalizacao)) return false;
   
   try {
     const dataLimpa = ultimaLocalizacao.trim();
@@ -96,7 +105,8 @@ function comprimirDados(dadosCompletos) {
     c: d.contrato,
     d: d.dias,
     u: d.ultimaLocalizacao,
-    h: d.comunicouHoje
+    h: d.comunicouHoje,
+    s: d.semDadosAPI
   }));
 }
 
@@ -107,7 +117,8 @@ function descomprimirDados(dadosComprimidos) {
     contrato: d.c,
     dias: d.d,
     ultimaLocalizacao: d.u,
-    comunicouHoje: d.h
+    comunicouHoje: d.h,
+    semDadosAPI: d.s
   }));
 }
 
@@ -211,15 +222,17 @@ fileInput.addEventListener("change", function (e) {
       const contrato = colunas[1]?.trim() || '';
       const ultimaLocalizacao = colunas[2]?.trim() || '';
       
-      const dias = calcularDias(ultimaLocalizacao);
-      const comunicouHojeFlag = comunicouHoje(ultimaLocalizacao);
+      const semDadosAPIFlag = isSemDadosAPI(ultimaLocalizacao);
+      const dias = semDadosAPIFlag ? -1 : calcularDias(ultimaLocalizacao);
+      const comunicouHojeFlag = semDadosAPIFlag ? false : comunicouHoje(ultimaLocalizacao);
 
       novosDados.push({
         imei: imei,
         contrato: contrato,
         dias: dias,
         ultimaLocalizacao: ultimaLocalizacao,
-        comunicouHoje: comunicouHojeFlag
+        comunicouHoje: comunicouHojeFlag,
+        semDadosAPI: semDadosAPIFlag
       });
       
       linhasProcessadas++;
@@ -237,7 +250,11 @@ fileInput.addEventListener("change", function (e) {
     }
 
     // Ordena por dias
-    novosDados.sort((a, b) => b.dias - a.dias);
+    novosDados.sort((a, b) => {
+      if (a.semDadosAPI) return -1;
+      if (b.semDadosAPI) return 1;
+      return b.dias - a.dias;
+    });
 
     dados = novosDados;
     
@@ -262,16 +279,18 @@ fileInput.addEventListener("change", function (e) {
   reader.readAsText(file);
 });
 
-// ATUALIZAR CARDS
+// ATUALIZAR CARDS - AGORA COM 6 CARDS
 function atualizarCards() {
   const countComunicouHoje = dados.filter(d => d.comunicouHoje === true).length;
-  const countSemComunicacaoHoje = dados.filter(d => d.dias > 0).length;
-  const count7 = dados.filter(d => d.dias > 7).length;
-  const count15 = dados.filter(d => d.dias > 15).length;
-  const count30 = dados.filter(d => d.dias > 30).length;
+  const countSemComunicacaoHoje = dados.filter(d => !d.semDadosAPI && d.dias > 0).length;
+  const countSemDadosAPI = dados.filter(d => d.semDadosAPI === true).length;
+  const count7 = dados.filter(d => !d.semDadosAPI && d.dias > 7).length;
+  const count15 = dados.filter(d => !d.semDadosAPI && d.dias > 15).length;
+  const count30 = dados.filter(d => !d.semDadosAPI && d.dias > 30).length;
   
   document.getElementById("countComunicouHoje").innerText = countComunicouHoje;
   document.getElementById("countSemComunicacaoHoje").innerText = countSemComunicacaoHoje;
+  document.getElementById("countSemDadosAPI").innerText = countSemDadosAPI;
   document.getElementById("count7").innerText = count7;
   document.getElementById("count15").innerText = count15;
   document.getElementById("count30").innerText = count30;
@@ -279,6 +298,7 @@ function atualizarCards() {
   console.log(`Cards atualizados: 
     Comunicou hoje:${countComunicouHoje} 
     Sem comunicação hoje:${countSemComunicacaoHoje} 
+    Sem dados API:${countSemDadosAPI}
     >7:${count7} 
     >15:${count15} 
     >30:${count30}`);
@@ -304,7 +324,12 @@ function atualizarTabela(dadosParaMostrar = dados) {
     const row = document.createElement("tr");
     
     let bgColor = '';
-    if (d.dias > 30) bgColor = 'style="background-color: #7f1d1d;"';
+    let displayDias = d.dias;
+    
+    if (d.semDadosAPI) {
+      bgColor = 'style="background-color: #6b21a8;"';
+      displayDias = 'Sem dados';
+    } else if (d.dias > 30) bgColor = 'style="background-color: #7f1d1d;"';
     else if (d.dias > 15) bgColor = 'style="background-color: #854d0e;"';
     else if (d.dias > 7) bgColor = 'style="background-color: #1e3a8a;"';
     else if (d.dias > 0) bgColor = 'style="background-color: #b45309;"';
@@ -313,7 +338,7 @@ function atualizarTabela(dadosParaMostrar = dados) {
     row.innerHTML = `
       <td ${bgColor}>${(d.imei || '-').substring(0, 30)}${d.imei && d.imei.length > 30 ? '...' : ''}</td>
       <td ${bgColor}>${(d.contrato || '-').substring(0, 20)}${d.contrato && d.contrato.length > 20 ? '...' : ''}</td>
-      <td ${bgColor}><strong>${d.dias || 0} dias</strong></td>
+      <td ${bgColor}><strong>${displayDias} ${typeof displayDias === 'number' ? 'dias' : ''}</strong></td>
       <td ${bgColor}>${d.ultimaLocalizacao || '-'}</td>
     `;
     tableBody.appendChild(row);
@@ -363,29 +388,30 @@ function baixarPlanilha() {
     return;
   }
   
-  // Criar cabeçalho do CSV
-  let csv = "imei,contrato,dias_sem_comunicacao,ultima_localizacao\n";
+  let csv = "imei,contrato,status,ultima_localizacao\n";
   
-  // Adicionar dados
   dadosFiltrados.forEach(d => {
-    const linha = `"${d.imei}","${d.contrato}",${d.dias},"${d.ultimaLocalizacao}"`;
+    let status = '';
+    if (d.semDadosAPI) status = 'Sem dados na API';
+    else if (d.dias === 0) status = 'Comunicou hoje';
+    else if (d.dias > 0) status = `${d.dias} dias sem comunicação`;
+    
+    const linha = `"${d.imei}","${d.contrato}","${status}","${d.ultimaLocalizacao}"`;
     csv += linha + "\n";
   });
   
-  // Criar nome do arquivo baseado no tipo
   let nomeArquivo = "dados";
   if (tipoModalAtual === 'comunicouHoje') nomeArquivo = "comunicacoes_hoje";
   else if (tipoModalAtual === 'semComunicacaoHoje') nomeArquivo = "sem_comunicacao_hoje";
+  else if (tipoModalAtual === 'semDadosAPI') nomeArquivo = "sem_dados_api";
   else if (tipoModalAtual === 7) nomeArquivo = "mais_7_dias";
   else if (tipoModalAtual === 15) nomeArquivo = "mais_15_dias";
   else if (tipoModalAtual === 30) nomeArquivo = "mais_30_dias";
   
-  // Adicionar data
   const data = new Date().toISOString().split('T')[0];
   nomeArquivo = `${nomeArquivo}_${data}.csv`;
   
-  // Criar blob e download
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }); // \uFEFF para UTF-8 com BOM
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   
@@ -410,20 +436,27 @@ function abrirModal(tipo) {
     dadosFiltrados = dados.filter(d => d.comunicouHoje === true);
     modalTitle.innerText = `✅ Dispositivos que comunicaram hoje (${dadosFiltrados.length})`;
   } else if (tipo === 'semComunicacaoHoje') {
-    dadosFiltrados = dados.filter(d => d.dias > 0);
+    dadosFiltrados = dados.filter(d => !d.semDadosAPI && d.dias > 0);
     modalTitle.innerText = `📅 Dispositivos sem comunicação hoje (${dadosFiltrados.length})`;
+  } else if (tipo === 'semDadosAPI') {
+    dadosFiltrados = dados.filter(d => d.semDadosAPI === true);
+    modalTitle.innerText = `🌐 Dispositivos sem dados na API (${dadosFiltrados.length})`;
   } else if (tipo === 7) {
-    dadosFiltrados = dados.filter(d => d.dias > 7);
+    dadosFiltrados = dados.filter(d => !d.semDadosAPI && d.dias > 7);
     modalTitle.innerText = `⚠️ Dispositivos > 7 dias (${dadosFiltrados.length})`;
   } else if (tipo === 15) {
-    dadosFiltrados = dados.filter(d => d.dias > 15);
+    dadosFiltrados = dados.filter(d => !d.semDadosAPI && d.dias > 15);
     modalTitle.innerText = `🔴 Dispositivos > 15 dias (${dadosFiltrados.length})`;
   } else if (tipo === 30) {
-    dadosFiltrados = dados.filter(d => d.dias > 30);
+    dadosFiltrados = dados.filter(d => !d.semDadosAPI && d.dias > 30);
     modalTitle.innerText = `⛔ Dispositivos > 30 dias (${dadosFiltrados.length})`;
   }
 
-  dadosFiltrados.sort((a, b) => b.dias - a.dias);
+  dadosFiltrados.sort((a, b) => {
+    if (a.semDadosAPI && !b.semDadosAPI) return -1;
+    if (!a.semDadosAPI && b.semDadosAPI) return 1;
+    return b.dias - a.dias;
+  });
 
   paginaAtual = 1;
   renderizarPagina();
@@ -443,8 +476,13 @@ function renderizarPagina() {
     
     let corDestaque = '';
     let icone = '⏱️';
+    let displayDias = d.dias;
     
-    if (d.dias > 30) {
+    if (d.semDadosAPI) {
+      corDestaque = 'color: #c084fc; font-weight: bold;';
+      icone = '🌐';
+      displayDias = 'Sem dados na API';
+    } else if (d.dias > 30) {
       corDestaque = 'color: #fca5a5; font-weight: bold;';
       icone = '⛔';
     } else if (d.dias > 15) {
@@ -465,7 +503,7 @@ function renderizarPagina() {
       <div style="background: #2e1065; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #8b5cf6;">
         <p><strong>IMEI:</strong> ${d.imei}</p>
         <p><strong>Contrato:</strong> ${d.contrato}</p>
-        <p><strong style="${corDestaque}">${icone} Dias sem comunicação: ${d.dias}</strong></p>
+        <p><strong style="${corDestaque}">${icone} Status: ${displayDias}</strong></p>
         <p><strong>📅 Última Localização:</strong> ${d.ultimaLocalizacao}</p>
       </div>
     `;
@@ -496,12 +534,12 @@ closeModal.onclick = function () {
   modal.style.display = "none";
 };
 
-// Botão de download
 downloadBtn.onclick = baixarPlanilha;
 
-// Eventos dos cards
+// Eventos dos cards - AGORA COM 6 CARDS
 document.getElementById("cardComunicouHoje").onclick = () => abrirModal('comunicouHoje');
 document.getElementById("cardSemComunicacaoHoje").onclick = () => abrirModal('semComunicacaoHoje');
+document.getElementById("cardSemDadosAPI").onclick = () => abrirModal('semDadosAPI');
 document.getElementById("card7").onclick = () => abrirModal(7);
 document.getElementById("card15").onclick = () => abrirModal(15);
 document.getElementById("card30").onclick = () => abrirModal(30);

@@ -17,13 +17,13 @@
   </div>
 
   <div class="cards">
-    <!-- NOVO CARD: Comunicações hoje -->
+    <!-- Card: Comunicações hoje -->
     <div class="card" id="cardComunicouHoje">
       <h2>✅ Comunicações hoje</h2>
       <p id="countComunicouHoje">0</p>
     </div>
 
-    <!-- CARD: Sem comunicação hoje -->
+    <!-- Card: Sem comunicação hoje -->
     <div class="card" id="cardSemComunicacaoHoje">
       <h2>📅 Sem comunicação hoje</h2>
       <p id="countSemComunicacaoHoje">0</p>
@@ -75,7 +75,10 @@
   <div id="modal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
-      <h2 id="modalTitle"></h2>
+      <div class="modal-header">
+        <h2 id="modalTitle"></h2>
+        <button id="downloadBtn" class="download-btn">📥 Baixar Planilha</button>
+      </div>
 
       <div id="modalList"></div>
 

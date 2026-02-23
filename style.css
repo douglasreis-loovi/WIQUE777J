@@ -200,15 +200,41 @@ tbody tr:hover {
   border-radius: 12px;
 }
 
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #7c3aed;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #c4b5fd;
+}
+
 .close {
-  float: right;
   font-size: 28px;
   cursor: pointer;
   color: white;
+  float: right;
+  margin-left: 20px;
 }
 
 .close:hover {
   color: #c4b5fd;
+}
+
+.download-btn {
+  background: #10b981;
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.download-btn:hover {
+  background: #059669;
 }
 
 .pagination {
@@ -268,5 +294,10 @@ tbody tr:hover {
   
   button {
     margin-left: 0;
+  }
+  
+  .modal-header {
+    flex-direction: column;
+    gap: 10px;
   }
 }

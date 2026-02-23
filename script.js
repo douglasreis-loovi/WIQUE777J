@@ -4,6 +4,8 @@ let dadosPesquisa = [];
 let paginaAtual = 1;
 const porPagina = 50;
 
+let tipoModalAtual = ''; // Para saber qual tipo de dados está sendo mostrado
+
 const fileInput = document.getElementById("fileInput");
 const modal = document.getElementById("modal");
 const modalList = document.getElementById("modalList");
@@ -12,6 +14,7 @@ const closeModal = document.querySelector(".close");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 const pageInfo = document.getElementById("pageInfo");
+const downloadBtn = document.getElementById("downloadBtn");
 
 // Elementos da pesquisa
 const searchInput = document.getElementById("searchInput");
@@ -31,10 +34,7 @@ function calcularDias(ultimaLocalizacao) {
   if (!ultimaLocalizacao || ultimaLocalizacao === '') return 999;
   
   try {
-    // Remove espaços extras e quebra a data
     const dataLimpa = ultimaLocalizacao.trim();
-    
-    // Converte para formato Date (assumindo formato YYYY-MM-DD HH:MM:SS)
     const partes = dataLimpa.split(' ');
     if (partes.length < 2) return 0;
     
@@ -42,7 +42,7 @@ function calcularDias(ultimaLocalizacao) {
     if (dataPartes.length < 3) return 0;
     
     const ano = parseInt(dataPartes[0]);
-    const mes = parseInt(dataPartes[1]) - 1; // Mês em JS é 0-11
+    const mes = parseInt(dataPartes[1]) - 1;
     const dia = parseInt(dataPartes[2]);
     
     const dataUltima = new Date(ano, mes, dia);
@@ -51,10 +51,7 @@ function calcularDias(ultimaLocalizacao) {
     const dataAtual = new Date();
     dataAtual.setHours(0, 0, 0, 0);
     
-    // Diferença em milissegundos
     const diffMs = dataAtual - dataUltima;
-    
-    // Converte para dias
     const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
     return diffDias;
@@ -69,10 +66,7 @@ function comunicouHoje(ultimaLocalizacao) {
   if (!ultimaLocalizacao) return false;
   
   try {
-    // Remove espaços extras
     const dataLimpa = ultimaLocalizacao.trim();
-    
-    // Pega apenas a parte da data (YYYY-MM-DD)
     const partes = dataLimpa.split(' ');
     const dataPartes = partes[0].split('-');
     
@@ -88,7 +82,6 @@ function comunicouHoje(ultimaLocalizacao) {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     
-    // Compara se é exatamente hoje
     return dataUltima.getTime() === hoje.getTime();
   } catch (e) {
     console.error("Erro ao verificar comunicação hoje:", e);
@@ -102,7 +95,8 @@ function comprimirDados(dadosCompletos) {
     i: d.imei,
     c: d.contrato,
     d: d.dias,
-    u: d.ultimaLocalizacao
+    u: d.ultimaLocalizacao,
+    h: d.comunicouHoje
   }));
 }
 
@@ -112,7 +106,8 @@ function descomprimirDados(dadosComprimidos) {
     imei: d.i,
     contrato: d.c,
     dias: d.d,
-    ultimaLocalizacao: d.u
+    ultimaLocalizacao: d.u,
+    comunicouHoje: d.h
   }));
 }
 
@@ -202,7 +197,7 @@ fileInput.addEventListener("change", function (e) {
     const novosDados = [];
     let linhasProcessadas = 0;
 
-    for (let i = 1; i < linhas.length; i++) { // Pula cabeçalho (i=1)
+    for (let i = 1; i < linhas.length; i++) {
       const linha = linhas[i].trim();
       if (!linha) continue;
 
@@ -269,12 +264,8 @@ fileInput.addEventListener("change", function (e) {
 
 // ATUALIZAR CARDS
 function atualizarCards() {
-  // Dispositivos que COMUNICARAM hoje (usando a flag comunicouHoje)
   const countComunicouHoje = dados.filter(d => d.comunicouHoje === true).length;
-  
-  // Dispositivos que NÃO comunicaram hoje (dias > 0)
   const countSemComunicacaoHoje = dados.filter(d => d.dias > 0).length;
-  
   const count7 = dados.filter(d => d.dias > 7).length;
   const count15 = dados.filter(d => d.dias > 15).length;
   const count30 = dados.filter(d => d.dias > 30).length;
@@ -306,7 +297,6 @@ function atualizarTabela(dadosParaMostrar = dados) {
     return;
   }
   
-  // Mostra apenas os primeiros 100 para performance
   const mostrarAte = Math.min(100, dadosParaMostrar.length);
   
   for (let i = 0; i < mostrarAte; i++) {
@@ -366,8 +356,56 @@ function limparPesquisa() {
   atualizarTabela(dados);
 }
 
+// FUNÇÃO PARA BAIXAR PLANILHA
+function baixarPlanilha() {
+  if (dadosFiltrados.length === 0) {
+    alert("❌ Nenhum dado para baixar.");
+    return;
+  }
+  
+  // Criar cabeçalho do CSV
+  let csv = "imei,contrato,dias_sem_comunicacao,ultima_localizacao\n";
+  
+  // Adicionar dados
+  dadosFiltrados.forEach(d => {
+    const linha = `"${d.imei}","${d.contrato}",${d.dias},"${d.ultimaLocalizacao}"`;
+    csv += linha + "\n";
+  });
+  
+  // Criar nome do arquivo baseado no tipo
+  let nomeArquivo = "dados";
+  if (tipoModalAtual === 'comunicouHoje') nomeArquivo = "comunicacoes_hoje";
+  else if (tipoModalAtual === 'semComunicacaoHoje') nomeArquivo = "sem_comunicacao_hoje";
+  else if (tipoModalAtual === 7) nomeArquivo = "mais_7_dias";
+  else if (tipoModalAtual === 15) nomeArquivo = "mais_15_dias";
+  else if (tipoModalAtual === 30) nomeArquivo = "mais_30_dias";
+  
+  // Adicionar data
+  const data = new Date().toISOString().split('T')[0];
+  nomeArquivo = `${nomeArquivo}_${data}.csv`;
+  
+  // Criar blob e download
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }); // \uFEFF para UTF-8 com BOM
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  
+  link.href = url;
+  link.download = nomeArquivo;
+  link.style.display = "none";
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  URL.revokeObjectURL(url);
+  
+  alert(`✅ Planilha baixada: ${nomeArquivo} (${dadosFiltrados.length} registros)`);
+}
+
 // ABRIR MODAL
 function abrirModal(tipo) {
+  tipoModalAtual = tipo;
+  
   if (tipo === 'comunicouHoje') {
     dadosFiltrados = dados.filter(d => d.comunicouHoje === true);
     modalTitle.innerText = `✅ Dispositivos que comunicaram hoje (${dadosFiltrados.length})`;
@@ -429,7 +467,6 @@ function renderizarPagina() {
         <p><strong>Contrato:</strong> ${d.contrato}</p>
         <p><strong style="${corDestaque}">${icone} Dias sem comunicação: ${d.dias}</strong></p>
         <p><strong>📅 Última Localização:</strong> ${d.ultimaLocalizacao}</p>
-        <p><small>Comunicou hoje: ${d.comunicouHoje ? '✅ Sim' : '❌ Não'}</small></p>
       </div>
     `;
     modalList.appendChild(item);
@@ -458,6 +495,9 @@ nextBtn.onclick = function () {
 closeModal.onclick = function () {
   modal.style.display = "none";
 };
+
+// Botão de download
+downloadBtn.onclick = baixarPlanilha;
 
 // Eventos dos cards
 document.getElementById("cardComunicouHoje").onclick = () => abrirModal('comunicouHoje');
